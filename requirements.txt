@@ -1,0 +1,6 @@
+streamlit
+pyautogui
+mss
+opencv-python
+DrissionPage
+pywin32
