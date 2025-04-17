@@ -9,6 +9,8 @@ class CommandType(Enum):
     EXECUTE_SCRIPT = 5
 
 def create_command(cmd_type: CommandType, data: dict = None):
+    if "data" in data and isinstance(data["data"], bytes):
+        data["data"] = list(data["data"])  # 将二进制数据转换为列表
     return json.dumps({
         "type": cmd_type.name,
         "data": data or {}
