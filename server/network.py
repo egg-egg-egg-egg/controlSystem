@@ -26,14 +26,18 @@ class ServerNetwork:
         self.sio.on('connect', self._handle_connect)
         self.sio.on('disconnect', self._handle_disconnect)
         self.sio.on('screenshot', self._handle_screenshot)  # 修改为专用事件
-
+        self.sio.on('test', self._handle_test)
 
         # ... 保持原有初始化 ...
         self.current_frame = None
         # self.display_lock = Lock()
         # self._init_display_thread()  # 初始化显示线程
 
-        
+    def _handle_test(self, sid, data):
+        """测试事件处理"""
+        client_ip = self.clients.get(sid)
+        print(f"收到来自 {client_ip} 的测试消息: {data}")
+        self.sio.emit('ack', {'status': 'success'}, to=sid)
 
     def start_listening(self, callback):
         self.callback = callback
@@ -43,7 +47,7 @@ class ServerNetwork:
         client_ip = environ.get('REMOTE_ADDR')
         self.clients[sid] = client_ip
         print(f"客户端 {client_ip} 已连接")
-        # self.sio.emit("start_streaming")  # 向客户端发送开始流媒体传输的消息
+        
 
     def _handle_disconnect(self, sid):
         client_ip = self.clients.pop(sid, None)

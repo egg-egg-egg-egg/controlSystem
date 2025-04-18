@@ -12,7 +12,11 @@ class CommandType(Enum):
 
 class SocketIOClient:
     def __init__(self, server_url="http://127.0.0.1:8848", ping_interval=5000):
-        self.sio = socketio.Client()
+        self.sio = socketio.Client(
+            # logger=True, engineio_logger=True
+            )
+        
+        
         self.screen_capture = ScreenCapture(70)
         self.server_url = server_url
         self.streaming = False
@@ -25,11 +29,12 @@ class SocketIOClient:
 
         # 添加心跳定时器
         self.ping_interval = ping_interval  # 5秒
-        self.sio.on('custom-pong', self._on_pong)
-        self.sio.on('custom-ping', self._start_heartbeat)
+        # self.sio.on('custom-pong', self._on_pong)
+        # self.sio.on('custom-ping', self._start_heartbeat)
         
         # 视频流设置
         self.streaming = False
+        
 
     def conniect(self):
         """连接到服务器"""
@@ -56,12 +61,14 @@ class SocketIOClient:
         readable_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.connection_time))
         print(f"{readable_time} 成功连接服务端: {self.server_url}")
 
-    def _on_disconnect(self):
-        self.deconnection_time = time.time()  # 记录连接时间
-        # 时间转换为可读格式
-        readable_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.deconnection_time))
-        print(f"{readable_time} 与服务端断开连接: {self.server_url}")
-        self._stop_streaming()
+    def _on_disconnect(self, reason):
+        sio = self.sio
+        if reason == sio.reason.CLIENT_DISCONNECT:
+            print('客户端主动断开连接')
+        elif reason == sio.reason.SERVER_DISCONNECT:
+            print('服务器断开了客户端连接')
+        else:
+            print('断开原因:', reason)
 
     def _on_ack(self, data):
         """接收服务端确认消息"""
@@ -78,8 +85,8 @@ class SocketIOClient:
         self.streaming = True
         print("开始发送屏幕截图流")
         # 启动视频流发送线程
-        # threading.Thread(target=self._start_video_stream, args=(0.5,), daemon=True).start()
-        self._start_video_stream(interval=1)
+        threading.Thread(target=self._start_video_stream, args=(0.5,), daemon=True).start()
+        # self._start_video_stream(interval=1)
 
 
     def _start_video_stream(self, interval=1):
@@ -88,7 +95,7 @@ class SocketIOClient:
         def send_frame():
             
             frame = self.screen_capture.get_frame()
-            print("发送屏幕截图")
+            
             # 优化点：使用JPEG压缩减少数据量（网页1方案增强）
             _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, self.screen_capture.quality])
             
@@ -113,3 +120,4 @@ if __name__ == "__main__":
 
     
     client.conniect()
+    client.sio.wait() # 保持连接
